@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MobileCDInventory.Views.MainView"
+             x:CompileBindings="False"
+             Background="#1E1E1E">
+
+    <DockPanel LastChildFill="True">
+        
+        <Border DockPanel.Dock="Top" Background="#2D2D30" Padding="15">
+            <StackPanel Spacing="10">
+                <TextBlock Text="Discogs Mobile" FontWeight="Bold" FontSize="20" Foreground="White" HorizontalAlignment="Center"/>
+                
+                <Grid ColumnDefinitions="*, Auto">
+                    <TextBox Name="TxtSearch" Grid.Column="0" Watermark="Search Artist or Title..." Margin="0,0,10,0"/>
+                    <Button Name="BtnSync" Grid.Column="1" Content="⬇️ Sync DB" Background="#0078D7" Foreground="White"/>
+                </Grid>
+                
+                <TextBlock Name="LblStatus" Text="Ready to sync." Foreground="LightGray" FontSize="12" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <ListBox Name="ListAlbums" Background="Transparent" Padding="10">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border Background="#2D2D30" CornerRadius="8" Padding="15" Margin="0,5">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Artist}" FontWeight="Bold" FontSize="16" Foreground="Cyan"/>
+                            <TextBlock Text="{Binding Title}" FontSize="14" Foreground="White" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                            
+                            <Grid ColumnDefinitions="*, *" Margin="0,10,0,0">
+                                <TextBlock Grid.Column="0" Text="{Binding Format}" FontSize="12" Foreground="Gray"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Year}" FontSize="12" Foreground="Gray" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        
+    </DockPanel>
+</UserControl>
