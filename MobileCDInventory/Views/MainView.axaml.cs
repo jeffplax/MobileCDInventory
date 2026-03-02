@@ -37,10 +37,14 @@ namespace MobileCDInventory.Views
             var txtSearch = this.FindControl<TextBox>("TxtSearch");
             if (txtSearch != null) txtSearch.TextChanged += TxtSearch_TextChanged;
 
+            var cmbGenre = this.FindControl<ComboBox>("CmbGenre");
+            if (cmbGenre != null) cmbGenre.SelectionChanged += CmbGenre_SelectionChanged;
+
             // If the database already exists on the phone, load it immediately!
             if (File.Exists(_dbPath))
             {
                 LoadDataFromDB();
+                LoadGenres(); // Ensure genres load on startup too
             }
         }
 
@@ -85,6 +89,7 @@ namespace MobileCDInventory.Views
                     
                     // Reload the UI
                     LoadDataFromDB(); 
+                    LoadGenres();
                 }
                 else
                 {
@@ -100,7 +105,15 @@ namespace MobileCDInventory.Views
                 btnSync.IsEnabled = true;
             }
         }
+
+        // Triggered when text is typed in the search box
         private void TxtSearch_TextChanged(object? sender, TextChangedEventArgs e)
+        {
+            LoadDataFromDB();
+        }
+
+        // Triggered when a new genre is picked from the dropdown
+        private void CmbGenre_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             LoadDataFromDB();
         }
@@ -111,28 +124,45 @@ namespace MobileCDInventory.Views
 
             var txtSearch = this.FindControl<TextBox>("TxtSearch");
             var lblStatus = this.FindControl<TextBlock>("LblStatus");
+            var cmbGenre = this.FindControl<ComboBox>("CmbGenre");
             
             if (txtSearch == null) return;
 
             try
             {
                 _allAlbums.Clear(); 
+                
+                // Grab the current values from both UI controls
                 string searchQ = txtSearch.Text ?? "";
+                string selectedGenre = cmbGenre?.SelectedItem as string ?? "All Genres";
 
                 using (var conn = new SQLiteConnection(_connectionString))
                 {
                     conn.Open();
-                    string sql = "SELECT * FROM albums";
                     
+                    // Base query with 1=1 trick to easily stack filters
+                    string sql = "SELECT * FROM albums WHERE 1=1";
+                    
+                    // Apply text filter
                     if (!string.IsNullOrEmpty(searchQ))
                     {
-                        sql += " WHERE Artist LIKE @q OR Title LIKE @q OR Genre LIKE @q";
+                        sql += " AND (Artist LIKE @q OR Title LIKE @q)";
+                    }
+
+                    // Apply genre filter
+                    if (!string.IsNullOrEmpty(selectedGenre) && selectedGenre != "All Genres")
+                    {
+                        sql += " AND Genre = @genre";
                     }
 
                     using (var cmd = new SQLiteCommand(sql, conn))
                     {
+                        // Safely inject parameters
                         if (!string.IsNullOrEmpty(searchQ))
                             cmd.Parameters.AddWithValue("@q", $"%{searchQ}%");
+
+                        if (!string.IsNullOrEmpty(selectedGenre) && selectedGenre != "All Genres")
+                            cmd.Parameters.AddWithValue("@genre", selectedGenre);
 
                         using (var r = cmd.ExecuteReader())
                         {
@@ -159,6 +189,33 @@ namespace MobileCDInventory.Views
             {
                 if (lblStatus != null) lblStatus.Text = $"DB Error: {ex.Message}";
             }
+        }
+    
+        private void LoadGenres()
+        {
+            if (string.IsNullOrEmpty(_dbPath) || !File.Exists(_dbPath)) return;
+
+            var cmbGenre = this.FindControl<ComboBox>("CmbGenre");
+            if (cmbGenre == null) return;
+
+            // Start with the default "All" option
+            var genres = new System.Collections.Generic.List<string> { "All Genres" };
+
+            using var conn = new System.Data.SQLite.SQLiteConnection(_connectionString);
+            conn.Open();
+
+            // Grab distinct genres from the 'albums' table
+            string sql = "SELECT DISTINCT Genre FROM albums WHERE Genre IS NOT NULL AND Genre != '' ORDER BY Genre ASC";
+            using var cmd = new System.Data.SQLite.SQLiteCommand(sql, conn);
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                genres.Add(reader.GetString(0));
+            }
+
+            cmbGenre.ItemsSource = genres;
+            cmbGenre.SelectedIndex = 0; // Default to "All Genres"
         }
     }
 

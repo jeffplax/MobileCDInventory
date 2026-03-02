@@ -6,7 +6,7 @@ using Avalonia.Android;
 namespace MobileCDInventory.Android;
 
 [Activity(
-    Label = "MobileCDInventory.Android",
+    Label = "My CD Inventory",
     Theme = "@style/MyTheme.NoActionBar",
     Icon = "@drawable/icon",
     MainLauncher = true,

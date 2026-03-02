@@ -6,8 +6,8 @@
     <JavaSdkDirectory>C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot</JavaSdkDirectory>
     <Nullable>enable</Nullable>
     <ApplicationId>com.CompanyName.MobileCDInventory</ApplicationId>
-    <ApplicationVersion>1</ApplicationVersion>
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>4</ApplicationVersion>
+    <ApplicationDisplayVersion>1.3</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
   </PropertyGroup>
