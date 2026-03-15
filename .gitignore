@@ -455,3 +455,6 @@ $RECYCLE.BIN/
 
 # Ignore any instances of SQLite database files
 *.db
+
+# Ignore any temporary csv files
+*.csv

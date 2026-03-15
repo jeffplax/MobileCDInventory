@@ -4,6 +4,7 @@
     <TargetFramework>net10.0-android</TargetFramework>
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
     <JavaSdkDirectory>C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot</JavaSdkDirectory>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <Nullable>enable</Nullable>
     <ApplicationId>com.CompanyName.MobileCDInventory</ApplicationId>
     <ApplicationVersion>4</ApplicationVersion>
