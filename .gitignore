@@ -458,3 +458,13 @@ $RECYCLE.BIN/
 
 # Ignore any temporary csv files
 *.csv
+
+# Custom SQLite Database Files
+inventory.db
+wishlist.db
+*.db-shm
+*.db-wal
+
+# Android Application Packages
+*.apk
+*-Signed.apk
