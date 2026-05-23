@@ -18,7 +18,9 @@ A high-performance .NET Avalonia application designed to catalog and browse a pe
 ## 📂 Project Structure
 
 * `MobileCDInventory/`: Core logic and ViewModels shared across platforms.
-* `MobileCDInventory.Desktop/`: Windows desktop implementation for library management.
+* ~~`MobileCDInventory.Desktop/`: Windows desktop implementation for library management.~~
+* ~~`MobileCDInventory.Browser/`: Browser implementation.~~
+* ~~`MobileCDInventory.iOS/`: Apple iOS implementation.~~
 * `MobileCDInventory.Android/`: Mobile implementation optimized for the Google Pixel 8 Pro.
 
 ## 📝 Recent Version History
