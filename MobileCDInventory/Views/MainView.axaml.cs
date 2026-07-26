@@ -20,10 +20,8 @@ namespace MobileCDInventory.Views
             if (DataContext == null)
             {
                 DataContext = new MainViewModel();
-            }
-            
-            // NEW: Load the wishlist as soon as the view initializes
-            LoadWishlistFromDB();
+            }            
+
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
             
@@ -47,6 +45,20 @@ namespace MobileCDInventory.Views
 
         }
 
+        private void CloseAbout_Click(object? sender, RoutedEventArgs e)
+        {
+            var mainTabs = this.FindControl<TabControl>("MainTabs");
+            var aboutTab = this.FindControl<TabItem>("AboutTab");
+            if(mainTabs != null)
+            {
+                mainTabs.SelectedIndex = 0; // Switch to the first tab (Master Library)
+            }
+            if(aboutTab != null)
+            {
+                aboutTab.IsVisible = false; // Hide the About tab
+            }
+    
+        }
         private async void BtnSync_Click(object? sender, RoutedEventArgs e)
         {
             var topLevel = TopLevel.GetTopLevel(this);
@@ -97,96 +109,7 @@ namespace MobileCDInventory.Views
                 }
             }
         }
-
-        // ====================================================================
-        // Wish List Sidecar Database Logic
-        // ====================================================================
-        private void BtnSaveWish_Click(object? sender, RoutedEventArgs e)
-        {
-            // 1. Validate input
-            if (string.IsNullOrWhiteSpace(TxtWishTitle.Text))
-            {
-                if (DataContext is MainViewModel vm)
-                {
-                    vm.StatusMessage = "Wishlist: Title is required.";
-                }
-                return; 
-            }
-
-            try
-            {
-                // 2. Route the sidecar database to the secure mobile app data folder
-                var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
-                string connectionString = $"Data Source={wishlistDbPath};";
-
-                // 3. Open connection and execute insert
-                using (var conn = new SqliteConnection(connectionString))
-                {
-                    conn.Open();
-                    
-                    // Create the table on the fly if this is the first time adding an item
-                    string createTableSql = @"CREATE TABLE IF NOT EXISTS ""wishlist"" (
-                                                ""WishID"" INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                ""Artist"" TEXT,
-                                                ""Title"" TEXT NOT NULL,
-                                                ""Format"" TEXT,
-                                                ""Notes"" TEXT,
-                                                ""DateAdded"" TEXT
-                                            );";
-                    using (var createCmd = new SqliteCommand(createTableSql, conn))
-                    {
-                        createCmd.ExecuteNonQuery();
-                    }
-
-                    // Insert the new target
-                    string insertSql = @"INSERT INTO wishlist (Artist, Title, Format, Notes, DateAdded) 
-                                         VALUES (@artist, @title, @format, @notes, @dateAdded)";
-                                         
-                    using (var cmd = new SqliteCommand(insertSql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@artist", TxtWishArtist.Text ?? "");
-                        cmd.Parameters.AddWithValue("@title", TxtWishTitle.Text);
-                        
-                        // Extract the format from the ComboBox
-                        string formatVal = "";
-                        if (CmbWishFormat.SelectedItem is ComboBoxItem cbi && cbi.Content != null)
-                        {
-                            formatVal = cbi.Content.ToString() ?? "";
-                        }
-                        cmd.Parameters.AddWithValue("@format", formatVal);
-                        
-                        cmd.Parameters.AddWithValue("@notes", TxtWishNotes.Text ?? "");
-                        cmd.Parameters.AddWithValue("@dateAdded", DateTime.Now.ToString("yyyy-MM-dd"));
-                        
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                // 4. Clear the UI fields after a successful save
-                TxtWishArtist.Text = "";
-                TxtWishTitle.Text = "";
-                TxtWishNotes.Text = "";
-                CmbWishFormat.SelectedIndex = 0;
-
-                // 5. Update Status
-                if (DataContext is MainViewModel vmSuccess)
-                {
-                    vmSuccess.StatusMessage = "Saved to Wish List!";
-                }
-
-                // NEW: Instantly refresh the grid to show the new item
-                LoadWishlistFromDB();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to save wishlist item: {ex.Message}");
-                if (DataContext is MainViewModel vmError)
-                {
-                    vmError.StatusMessage = "Error saving to Wish List.";
-                }
-            }
-        }
+        
 
         // ====================================================================
         // Wish List Import / Export Logic
@@ -209,17 +132,17 @@ namespace MobileCDInventory.Views
                     var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                     var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");   
                     
-                    // Copy from OneDrive to Android Vault
                     await using var sourceStream = await files[0].OpenReadAsync();
                     using (var destinationStream = File.Create(wishlistDbPath))
                     {
                         await sourceStream.CopyToAsync(destinationStream);
                     }
 
-                    if (DataContext is MainViewModel vm) vm.StatusMessage = "Wish List Imported!";
-                    
-                    // Refresh the grid instantly
-                    LoadWishlistFromDB(); 
+                    if (DataContext is MainViewModel vm) 
+                    {
+                        vm.StatusMessage = "Wish List Imported!";
+                        vm.LoadWishlistFromDB(); // Tell the ViewModel to reload the new file
+                    }
                 }
             }
             catch (Exception ex)
@@ -267,111 +190,5 @@ namespace MobileCDInventory.Views
                 if (DataContext is MainViewModel vm) vm.StatusMessage = "Error exporting Wish List.";
             }
         }
-
-        // ====================================================================
-        // Load Wishlist Logic
-        // ====================================================================
-        private void LoadWishlistFromDB()
-        {
-            var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
-            
-            // If the database doesn't exist yet, there's nothing to load
-            if (!File.Exists(wishlistDbPath)) return;
-
-            string connectionString = $"Data Source={wishlistDbPath};";
-            var items = new List<WishlistItem>();
-
-            try
-            {
-                using (var conn = new SqliteConnection(connectionString))
-                {
-                    conn.Open();
-                    // Pull the items, newest first
-                    string sql = "SELECT WishID, Artist, Title, Format, Notes FROM wishlist ORDER BY DateAdded DESC";
-                    
-                    using (var cmd = new SqliteCommand(sql, conn))
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            items.Add(new WishlistItem
-                            {
-                                wishID = Convert.ToInt32(reader["WishID"]),
-                                Artist = reader["Artist"]?.ToString() ?? "",
-                                Title = reader["Title"]?.ToString() ?? "",
-                                Format = reader["Format"]?.ToString() ?? "",
-                                Notes = reader["Notes"]?.ToString() ?? ""
-                            });
-                        }
-                    }
-                }
-
-                // Explicitly find the grid and bind the data (Bypasses compilation issues)
-                var gridWishlist = this.FindControl<DataGrid>("GridWishlist");
-                if (gridWishlist != null)
-                {
-                    gridWishlist.ItemsSource = items;
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Failed to load wishlist: {ex.Message}");
-            }
-        }
-
-        private void BtnDeleteWish_Click(object? sender, RoutedEventArgs e)
-        {
-            if (sender is Button btn && btn.DataContext is WishlistItem itemToDelete)
-            {
-                try
-                {
-                    var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");   
-                    string connectionString = $"Data Source={wishlistDbPath};";
-
-                    using (var conn = new SqliteConnection(connectionString))
-                    {
-                        conn.Open();
-                        string deleteSql = "DELETE FROM wishlist WHERE WishID = @wishID";
-                        using (var cmd = new SqliteCommand(deleteSql, conn))
-                        {
-                            cmd.Parameters.AddWithValue("@wishID", itemToDelete.wishID);
-                            cmd.ExecuteNonQuery();
-                        }
-                    }
-
-                    // Refresh the grid after deletion
-                    LoadWishlistFromDB();
-
-                    if (DataContext is MainViewModel vm) 
-                    {
-                        vm.StatusMessage = "Wish List item deleted.";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Failed to delete wishlist item: {ex.Message}");
-                    if (DataContext is MainViewModel vm) 
-                    {
-                        vm.StatusMessage = "Error deleting Wish List item.";
-                    }
-                }
-            }
-        }
-    }
-
-    
-
-    // ====================================================================
-    // Wish List Data Model
-    // ====================================================================
-    public class WishlistItem
-    {
-        public int wishID { get; set; } // required for internal handling, but not displayed in the grid
-        public string Artist { get; set; } = "";
-        public string Title { get; set; } = "";
-        public string Format { get; set; } = "";
-        public string Notes { get; set; } = "";
     }
 }

@@ -14,7 +14,10 @@
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
 
     <Deterministic>false</Deterministic>
-    <AssemblyVersion>1.3.*</AssemblyVersion>
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+
+    <!-- Suppress the Android 16KB page size warning (XA0141) until Avalonia fixes it -->
+    <NoWarn>$(NoWarn);XA0141</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +29,10 @@
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" />
     <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
+
+    <!-- Explicit package references -->
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Android" />
   </ItemGroup>
 
   <ItemGroup>

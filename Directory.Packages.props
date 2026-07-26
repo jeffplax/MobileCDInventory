@@ -20,5 +20,7 @@
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
     <PackageVersion Include="System.Data.SQLite" Version="2.0.2" />
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
+    <PackageVersion Include="SkiaSharp" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Android" Version="2.88.9" />    
   </ItemGroup>
 </Project>

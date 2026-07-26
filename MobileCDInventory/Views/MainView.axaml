@@ -5,7 +5,7 @@
              x:DataType="vm:MainViewModel"
              Background="#1E1E1E">
 
-    <TabControl>       
+    <TabControl x:Name="MainTabs">       
         <TabItem Header="🎵 Master Library">
             
             <DockPanel LastChildFill="True">        
@@ -126,10 +126,10 @@
                 </Grid>
             </DockPanel>
         </TabItem>
-
         <TabItem Header="🛒 Wish List">
             <Grid RowDefinitions="Auto, Auto, *">
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="10, 10,10,0" HorizontalAlignment="Center">
+                    <!-- Note: Sync/File operations stay as Click events to utilize the UI StorageProvider -->
                     <Button Name="BtnImportWish" Content="⬇️ Pull from OneDrive" Click="BtnImportWish_Click" Background="#3F3F46" Foreground="White" Padding="10,5"/>
                     <Button Name="BtnExportWish" Content="⬆️ Push to OneDrive" Click="BtnExportWish_Click" Background="#3F3F46" Foreground="White" Padding="10,5"/>
                 </StackPanel>
@@ -138,55 +138,67 @@
                     <StackPanel Spacing="10">
                         <TextBlock Text="Add New Target" FontWeight="Bold" Foreground="Cyan" FontSize="18"/>
                         
-                        <TextBox Name="TxtWishArtist" Watermark="Artist (e.g., Beethoven, Pink Floyd)" FontSize="16" Padding="10"/>
-                        <TextBox Name="TxtWishTitle" Watermark="Album Title or Work" FontSize="16" Padding="10"/>
+                        <TextBox Text="{Binding WishArtist}" Watermark="Artist (e.g., Beethoven, Pink Floyd)" FontSize="16" Padding="10"/>
+                        <TextBox Text="{Binding WishTitle}" Watermark="Album Title or Work" FontSize="16" Padding="10"/>
                         
                         <Grid ColumnDefinitions="*,*">
-                            <ComboBox Name="CmbWishFormat" Grid.Column="0" SelectedIndex="0" HorizontalAlignment="Stretch" Margin="0,0,5,0" FontSize="16">
-                                <ComboBoxItem>CD</ComboBoxItem>
-                                <ComboBoxItem>Vinyl</ComboBoxItem>
-                                <ComboBoxItem>Box Set</ComboBoxItem>
-                                <ComboBoxItem>Digital</ComboBoxItem>
+                            <!-- Binding ComboBox string values directly -->
+                            <ComboBox SelectedItem="{Binding WishFormat}" Grid.Column="0" HorizontalAlignment="Stretch" Margin="0,0,5,0" FontSize="16">
+                                <x:String>CD</x:String>
+                                <x:String>Vinyl</x:String>
+                                <x:String>Box Set</x:String>
+                                <x:String>Digital</x:String>
                             </ComboBox>
-                            <TextBox Name="TxtWishNotes" Grid.Column="1" Watermark="Notes / Conductor" Margin="5,0,0,0" FontSize="16" Padding="10"/>
+                            <TextBox Text="{Binding WishNotes}" Grid.Column="1" Watermark="Notes / Conductor" Margin="5,0,0,0" FontSize="16" Padding="10"/>
                         </Grid>
 
-                        <Button Name="BtnSaveWish" Content="💾 Save to Wish List" Background="#0078D7" Foreground="White" 
-                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="18" Padding="10"
-                                Click="BtnSaveWish_Click"/>
+                        <Button Command="{Binding SaveWishCommand}" Content="💾 Save to Wish List" Background="#0078D7" Foreground="White" 
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" FontSize="18" Padding="10"/>
                     </StackPanel>
                 </Border>
 
-                <DataGrid Grid.Row="2" Name="GridWishlist" AutoGenerateColumns="False" 
-                        IsReadOnly="True" Margin="10,0,10,10" Background="Transparent" x:CompileBindings="False">
+                <!-- Removed CompileBindings="False" to regain Avalonia performance -->
+                <DataGrid Grid.Row="2" Name="GridWishlist" 
+                          ItemsSource="{Binding Wishlist}"
+                          AutoGenerateColumns="False" 
+                          IsReadOnly="True" Margin="10,0,10,10" Background="Transparent">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Artist" Binding="{Binding Artist}" Width="*"/>
                         <DataGridTextColumn Header="Title" Binding="{Binding Title}" Width="*"/>
+                        
+                        <!-- NEW: The functional Delete Button -->
+                        <DataGridTemplateColumn Header="Del" Width="Auto">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Content="✖" 
+                                            Command="{Binding #GridWishlist.((vm:MainViewModel)DataContext).DeleteWishCommand}"
+                                            CommandParameter="{Binding}"
+                                            Background="Transparent" 
+                                            Foreground="Red" 
+                                            Padding="5,0"
+                                            BorderThickness="0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
                 
             </Grid>
         </TabItem>
-        <TabItem Header="ℹ️ About">
+        <TabItem Header="ℹ️ About" x:Name="AboutTab">
             <Border Background="#2D2D30" Padding="30" Margin="20" CornerRadius="8" 
                     BorderBrush="#3F3F46" BorderThickness="1" 
                     VerticalAlignment="Center" HorizontalAlignment="Center">
-                <StackPanel Spacing="10" HorizontalAlignment="Center">
-                    
+                <StackPanel Spacing="10" HorizontalAlignment="Center">                    
                     <TextBlock Text="💿 Mobile CD Inventory" FontWeight="Bold" FontSize="24" Foreground="Cyan" HorizontalAlignment="Center"/>
-                    <TextBlock Name= "LblVersion" FontSize="16" Foreground="LightGray" HorizontalAlignment="Center"/>
-                    <TextBlock Name= "LblBuildDate" FontSize="14" Foreground="Gray" HorizontalAlignment="Center"/>
-                    
-                    <Separator Background="#3F3F46" Margin="0,20"/>
-                    
-                    <TextBlock Text="Author: Jeff" FontSize="18" Foreground="White" HorizontalAlignment="Center"/>
-                    <TextBlock Text="Felicia's Database Emporium" FontSize="14" Foreground="Gray" HorizontalAlignment="Center"/>
-                    
+                    <TextBlock Name="LblVersion" FontSize="16" Foreground="LightGray" HorizontalAlignment="Center"/>
+                    <TextBlock Name="LblBuildDate" FontSize="14" Foreground="Gray" HorizontalAlignment="Center"/>
+                    <Separator Background="#3F3F46" Margin="0,20"/>                    
+                    <TextBlock Text="Author: Jeff" FontSize="18" Foreground="White" HorizontalAlignment="Center"/>                    
                     <TextBlock Text="Powered by Avalonia UI &amp; SQLite" FontSize="12" Foreground="#888888" HorizontalAlignment="Center" Margin="0,30,0,0"/>
-                
+                    <Button Content="Close" Click="CloseAbout_Click" HorizontalAlignment="Center" Margin="0,20,0,0" Background="Purple" Foreground="White" Padding="30,10" CornerRadius="5"/>
                 </StackPanel>
             </Border>
         </TabItem>
     </TabControl>
-    
 </UserControl>

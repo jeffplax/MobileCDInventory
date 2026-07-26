@@ -1,4 +1,5 @@
 ﻿using System;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.Data.Sqlite;
 using System.IO;
@@ -39,19 +40,18 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<Album> Albums { get; } = new();
     public ObservableCollection<string> Genres { get; } = new();
 
-    private readonly string _dbPath;
+    public ObservableCollection<WishlistItem> Wishlist { get; } = new();
+
+    [ObservableProperty] private string _wishArtist = "";
+    [ObservableProperty] private string _wishTitle = "";
+    [ObservableProperty] private string _wishFormat = "CD";
+    [ObservableProperty] private string _wishNotes = "";
+
     private string _connectionString = string.Empty;
 
     public MainViewModel()
     {
-        // Determine where the database is when the app starts up.
-        var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _dbPath = Path.Combine(vaultFolder, "inventory.db");
-
-        // if (File.Exists(_dbPath))
-        // {
-        //     ConnectToDatabase(_dbPath);
-        // }
+        LoadWishlistFromDB();
     }
 
     public void ConnectToDatabase(string secureDbPath)
@@ -254,6 +254,130 @@ public partial class MainViewModel : ViewModelBase
         // Refresh the list with the new order
         LoadDataFromDB();
     }
+
+    // WISHLIST METHODS
+    public void LoadWishlistFromDB()
+    {
+        var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
+
+        if (!File.Exists(wishlistDbPath)) return;
+
+        try
+        {
+            Wishlist.Clear();
+            string connectionString = $"Data Source={wishlistDbPath}";
+
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+            string sql = "SELECT WishID, Artist, Title, Format, Notes FROM wishlist ORDER BY DateAdded DESC";
+
+            using var cmd = new SqliteCommand(sql, conn);
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                Wishlist.Add(new WishlistItem
+                {
+                    wishID = Convert.ToInt32(reader["WishID"]),
+                    Artist = reader["Artist"]?.ToString() ?? "",
+                    Title = reader["Title"]?.ToString() ?? "",
+                    Format = reader["Format"]?.ToString() ?? "",
+                    Notes = reader["Notes"]?.ToString() ?? ""
+                });
+            }
+        }
+        catch(Exception ex)
+        {
+            StatusMessage = $"Error loading Wish List: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void SaveWish()
+    {
+        if (string.IsNullOrWhiteSpace(WishTitle))
+        {
+            StatusMessage = "Wishlist: Title cannot be empty.";
+            return;
+        }
+        try
+        {
+            var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
+            string connectionString = $"Data Source={wishlistDbPath}";
+
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();
+
+            string CreateTableSql = @"CREATE TABLE IF NOT EXISTS ""wishlist"" (
+                                        ""WishID"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        ""Artist"" TEXT,
+                                        ""Title"" TEXT,
+                                        ""Format"" TEXT,
+                                        ""Notes"" TEXT,
+                                        ""DateAdded"" TEXT
+                                      );";
+            using (var createCmd = new SqliteCommand(CreateTableSql, conn))
+            {
+                createCmd.ExecuteNonQuery();
+            }
+            
+            string insertSql = @"INSERT INTO wishlist (Artist, Title, Format, Notes, DateAdded)
+                                 VALUES (@Artist, @Title, @Format, @Notes, @DateAdded);";
+
+            using (var insertCmd = new SqliteCommand(insertSql, conn))
+            {
+                insertCmd.Parameters.AddWithValue("@Artist", WishArtist ?? "");
+                insertCmd.Parameters.AddWithValue("@Title", WishTitle);
+                insertCmd.Parameters.AddWithValue("@Format", WishFormat ?? "");
+                insertCmd.Parameters.AddWithValue("@Notes", WishNotes ?? "");
+                insertCmd.Parameters.AddWithValue("@DateAdded", DateTime.Now.ToString("yyyy-MM-dd"));
+                insertCmd.ExecuteNonQuery();
+            }
+
+            // Clear input fields upon successful save
+            WishArtist = "";
+            WishTitle = "";
+            WishFormat = "";
+            WishNotes = "";
+
+            StatusMessage = "Wish List item saved successfully.";
+            LoadWishlistFromDB(); // Refresh the wish list display            
+        }
+        catch(Exception ex)
+        {
+            StatusMessage = $"Error saving to Wish List: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void DeleteWish(WishlistItem item)
+    {
+        if (item == null) return;
+
+        try
+        {
+            var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
+            string connectionString = $"Data Source={wishlistDbPath};";
+
+            using var conn = new SqliteConnection(connectionString);
+            conn.Open();            
+            string deleteSql = "DELETE FROM wishlist WHERE WishID = @wishID;";
+            using var deleteCmd = new SqliteCommand(deleteSql, conn);
+            deleteCmd.Parameters.AddWithValue("@wishID", item.wishID);
+            deleteCmd.ExecuteNonQuery();
+            
+            StatusMessage = "Wish List item deleted successfully.";
+            LoadWishlistFromDB(); // Refresh the wish list display
+        }
+        catch(Exception ex)
+        {
+            StatusMessage = $"Error deleting from Wish List: {ex.Message}";
+        }    
+    }
+
     // --- DATA MODEL ---
     public class Album 
     {
@@ -273,5 +397,15 @@ public partial class MainViewModel : ViewModelBase
         public string TrackNumber { get; set; } = "";
         public string Title { get; set; } = "";
         public string Duration { get; set; } = "";
+    }
+
+    public class WishlistItem
+    {
+        public int wishID { get; set; }
+        public string Artist { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Format { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public string DateAdded { get; set; } = "";
     }
 }
