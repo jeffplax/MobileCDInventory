@@ -1,9 +1,7 @@
 using System;
 using System.IO;
-using System.Diagnostics;
-using System.Collections.Generic; // NEW: Required for the List<WishlistItem>
+using System.Threading.Tasks;
 using System.Linq; 
-using Microsoft.Data.Sqlite;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -47,18 +45,42 @@ namespace MobileCDInventory.Views
 
         private void CloseAbout_Click(object? sender, RoutedEventArgs e)
         {
-            var mainTabs = this.FindControl<TabControl>("MainTabs");
-            var aboutTab = this.FindControl<TabItem>("AboutTab");
-            if(mainTabs != null)
-            {
-                mainTabs.SelectedIndex = 0; // Switch to the first tab (Master Library)
-            }
-            if(aboutTab != null)
-            {
-                aboutTab.IsVisible = false; // Hide the About tab
-            }
-    
+            // Switch back to the first tab (Master Library). The About tab stays available.
+            MainTabs.SelectedIndex = 0;
         }
+        // Opens the file picker at the folder of the last file picked for this purpose (e.g. the OneDrive
+        // WindowsCode folder) instead of wherever Android defaults to, such as Downloads. Only the location is
+        // remembered: the user still chooses the file each time, and no lasting access to it is kept.
+        private static async Task<IStorageFile?> PickFileAsync(TopLevel topLevel, string title, string locationKey)
+        {
+            var locationFile = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), $"last_location_{locationKey}.txt");
+
+            IStorageFolder? startLocation = null;
+            try
+            {
+                // Android's picker accepts a file's content:// URI as its start location and opens that file's
+                // folder. If the provider can't, it just opens at its default.
+                if (File.Exists(locationFile))
+                    startLocation = await topLevel.StorageProvider.OpenFolderBookmarkAsync(File.ReadAllText(locationFile).Trim());
+            }
+            catch (Exception)
+            {
+                startLocation = null; // A stale location isn't worth failing the pick over
+            }
+
+            var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = false,
+                SuggestedStartLocation = startLocation
+            });
+            if (files.Count == 0) return null;
+
+            try { File.WriteAllText(locationFile, files[0].Path.ToString()); } catch (Exception) { }
+            return files[0];
+        }
+
         private async void BtnSync_Click(object? sender, RoutedEventArgs e)
         {
             var topLevel = TopLevel.GetTopLevel(this);
@@ -66,13 +88,9 @@ namespace MobileCDInventory.Views
 
             try
             {
-                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-                {
-                    Title = "Select inventory.db (Check your OneDrive folder)",
-                    AllowMultiple = false
-                });
+                var inventoryFile = await PickFileAsync(topLevel, "Select inventory.db (Check your OneDrive folder)", "inventory");
 
-                if (files.Count >= 1)
+                if (inventoryFile != null)
                 {
                     // Use a single 'if' check to get our ViewModel
                     if (DataContext is MainViewModel vm)
@@ -85,7 +103,7 @@ namespace MobileCDInventory.Views
                         var dbPath = Path.Combine(vaultFolder, "inventory.db");   
                         
                         // 3. Copy the file
-                        await using var sourceStream = await files[0].OpenReadAsync();
+                        await using var sourceStream = await inventoryFile.OpenReadAsync();
                         using (var destinationStream = File.Create(dbPath))
                         {
                             await sourceStream.CopyToAsync(destinationStream);
@@ -112,82 +130,57 @@ namespace MobileCDInventory.Views
         
 
         // ====================================================================
-        // Wish List Import / Export Logic
+        // Wish List Sync
         // ====================================================================
-        private async void BtnImportWish_Click(object? sender, RoutedEventArgs e)
+        // Pick the shared wishlist.db in OneDrive, merge it with the phone's copy (see WishlistStore.Merge),
+        // then write the merged result back to both. Adds and deletes made on either device survive, instead of
+        // whichever copy was pushed or pulled last overwriting the other.
+        private async void BtnSyncWish_Click(object? sender, RoutedEventArgs e)
         {
             var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
+            if (topLevel == null || DataContext is not MainViewModel vm) return;
 
             try
             {
-                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-                {
-                    Title = "Select wishlist.db (Check your OneDrive folder)",
-                    AllowMultiple = false
-                });
+                var remoteFile = await PickFileAsync(topLevel, "Select wishlist.db (Check your OneDrive folder)", "wishlist");
+                if (remoteFile == null) return;
 
-                if (files.Count >= 1)
-                {
-                    var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                    var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");   
-                    
-                    await using var sourceStream = await files[0].OpenReadAsync();
-                    using (var destinationStream = File.Create(wishlistDbPath))
-                    {
-                        await sourceStream.CopyToAsync(destinationStream);
-                    }
+                vm.StatusMessage = "Syncing Wish List...";
 
-                    if (DataContext is MainViewModel vm) 
+                var remoteCopyPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "wishlist_remote.db");
+                await using (var source = await remoteFile.OpenReadAsync())
+                await using (var destination = File.Create(remoteCopyPath))
+                {
+                    await source.CopyToAsync(destination);
+                }
+
+                using (var conn = WishlistStore.Open(remoteCopyPath))
+                {
+                    if (!WishlistStore.HasWishlistTable(conn))
                     {
-                        vm.StatusMessage = "Wish List Imported!";
-                        vm.LoadWishlistFromDB(); // Tell the ViewModel to reload the new file
+                        vm.StatusMessage = "That file isn't a Wish List (no wishlist table). Nothing changed.";
+                        return;
                     }
                 }
+
+                int count = WishlistStore.Merge(WishlistStore.LocalPath, remoteCopyPath);
+
+                // Write back into the file that was picked. A Save dialog would make Android create
+                // "wishlist (1).db" alongside the original, which the desktop never reads. Some Android storage
+                // providers don't truncate on write; that's safe here because the merged copy is never smaller.
+                await using (var source = File.OpenRead(remoteCopyPath))
+                await using (var destination = await remoteFile.OpenWriteAsync())
+                {
+                    await source.CopyToAsync(destination);
+                }
+
+                vm.LoadWishlistFromDB();
+                vm.StatusMessage = $"Wish List synced: {count} targets.";
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Import Error: {ex.Message}");
-                if (DataContext is MainViewModel vm) vm.StatusMessage = "Error importing Wish List.";
-            }
-        }
-
-        private async void BtnExportWish_Click(object? sender, RoutedEventArgs e)
-        {
-            var topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
-
-            try
-            {
-                var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");   
-
-                if (!File.Exists(wishlistDbPath))
-                {
-                    if (DataContext is MainViewModel vmErr) vmErr.StatusMessage = "No Wish List to export yet!";
-                    return;
-                }
-
-                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-                {
-                    Title = "Save wishlist.db to OneDrive",
-                    SuggestedFileName = "wishlist.db"
-                });
-
-                if (file != null)
-                {
-                    // Copy from Android Vault up to OneDrive
-                    using var sourceStream = File.OpenRead(wishlistDbPath);
-                    await using var destinationStream = await file.OpenWriteAsync();
-                    await sourceStream.CopyToAsync(destinationStream);
-                    
-                    if (DataContext is MainViewModel vm) vm.StatusMessage = "Wish List Exported!";
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Export Error: {ex.Message}");
-                if (DataContext is MainViewModel vm) vm.StatusMessage = "Error exporting Wish List.";
+                vm.StatusMessage = $"Wish List Sync Error: {ex.Message}";
             }
         }
     }

@@ -255,23 +255,18 @@ public partial class MainViewModel : ViewModelBase
         LoadDataFromDB();
     }
 
-    // WISHLIST METHODS
+    // WISHLIST METHODS (storage and OneDrive merge live in WishlistStore)
     public void LoadWishlistFromDB()
     {
-        var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
-
-        if (!File.Exists(wishlistDbPath)) return;
+        if (!File.Exists(WishlistStore.LocalPath)) return;
 
         try
         {
             Wishlist.Clear();
-            string connectionString = $"Data Source={wishlistDbPath}";
+            using var conn = WishlistStore.Open(WishlistStore.LocalPath);
+            WishlistStore.EnsureSchema(conn);
 
-            using var conn = new SqliteConnection(connectionString);
-            conn.Open();
-            string sql = "SELECT WishID, Artist, Title, Format, Notes FROM wishlist ORDER BY DateAdded DESC";
-
+            string sql = "SELECT WishID, Artist, Title, Format, Notes, DateAdded FROM wishlist WHERE Deleted = 0 ORDER BY DateAdded DESC";
             using var cmd = new SqliteCommand(sql, conn);
             using var reader = cmd.ExecuteReader();
 
@@ -283,7 +278,8 @@ public partial class MainViewModel : ViewModelBase
                     Artist = reader["Artist"]?.ToString() ?? "",
                     Title = reader["Title"]?.ToString() ?? "",
                     Format = reader["Format"]?.ToString() ?? "",
-                    Notes = reader["Notes"]?.ToString() ?? ""
+                    Notes = reader["Notes"]?.ToString() ?? "",
+                    DateAdded = reader["DateAdded"]?.ToString() ?? ""
                 });
             }
         }
@@ -303,46 +299,34 @@ public partial class MainViewModel : ViewModelBase
         }
         try
         {
-            var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
-            string connectionString = $"Data Source={wishlistDbPath}";
+            using var conn = WishlistStore.Open(WishlistStore.LocalPath);
+            WishlistStore.EnsureSchema(conn);
 
-            using var conn = new SqliteConnection(connectionString);
-            conn.Open();
+            // Re-adding a previously deleted (or existing) target revives that row instead of duplicating it
+            using var cmd = new SqliteCommand(@"UPDATE wishlist
+                                                SET Format = @Format, Notes = @Notes, Deleted = 0, Modified = @Modified
+                                                WHERE lower(trim(Artist)) = lower(@Artist) AND lower(trim(Title)) = lower(@Title);", conn);
+            cmd.Parameters.AddWithValue("@Artist", (WishArtist ?? "").Trim());
+            cmd.Parameters.AddWithValue("@Title", WishTitle.Trim());
+            cmd.Parameters.AddWithValue("@Format", WishFormat ?? "");
+            cmd.Parameters.AddWithValue("@Notes", WishNotes ?? "");
+            cmd.Parameters.AddWithValue("@Modified", WishlistStore.UtcStamp());
 
-            string CreateTableSql = @"CREATE TABLE IF NOT EXISTS ""wishlist"" (
-                                        ""WishID"" INTEGER PRIMARY KEY AUTOINCREMENT,
-                                        ""Artist"" TEXT,
-                                        ""Title"" TEXT,
-                                        ""Format"" TEXT,
-                                        ""Notes"" TEXT,
-                                        ""DateAdded"" TEXT
-                                      );";
-            using (var createCmd = new SqliteCommand(CreateTableSql, conn))
+            if (cmd.ExecuteNonQuery() == 0)
             {
-                createCmd.ExecuteNonQuery();
-            }
-            
-            string insertSql = @"INSERT INTO wishlist (Artist, Title, Format, Notes, DateAdded)
-                                 VALUES (@Artist, @Title, @Format, @Notes, @DateAdded);";
-
-            using (var insertCmd = new SqliteCommand(insertSql, conn))
-            {
-                insertCmd.Parameters.AddWithValue("@Artist", WishArtist ?? "");
-                insertCmd.Parameters.AddWithValue("@Title", WishTitle);
-                insertCmd.Parameters.AddWithValue("@Format", WishFormat ?? "");
-                insertCmd.Parameters.AddWithValue("@Notes", WishNotes ?? "");
-                insertCmd.Parameters.AddWithValue("@DateAdded", DateTime.Now.ToString("yyyy-MM-dd"));
-                insertCmd.ExecuteNonQuery();
+                cmd.CommandText = @"INSERT INTO wishlist (Artist, Title, Format, Notes, DateAdded, Modified, Deleted)
+                                    VALUES (@Artist, @Title, @Format, @Notes, @DateAdded, @Modified, 0);";
+                cmd.Parameters.AddWithValue("@DateAdded", DateTime.Now.ToString("yyyy-MM-dd"));
+                cmd.ExecuteNonQuery();
             }
 
             // Clear input fields upon successful save
             WishArtist = "";
             WishTitle = "";
-            WishFormat = "";
+            WishFormat = "CD";
             WishNotes = "";
 
-            StatusMessage = "Wish List item saved successfully.";
+            StatusMessage = "Saved. Tap Sync to send it to the desktop.";
             LoadWishlistFromDB(); // Refresh the wish list display            
         }
         catch(Exception ex)
@@ -358,15 +342,12 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var wishlistDbPath = Path.Combine(vaultFolder, "wishlist.db");
-            string connectionString = $"Data Source={wishlistDbPath};";
-
-            using var conn = new SqliteConnection(connectionString);
-            conn.Open();            
-            string deleteSql = "DELETE FROM wishlist WHERE WishID = @wishID;";
-            using var deleteCmd = new SqliteCommand(deleteSql, conn);
-            deleteCmd.Parameters.AddWithValue("@wishID", item.wishID);
+            using var conn = WishlistStore.Open(WishlistStore.LocalPath);
+            // Soft delete, matched on Artist + Title, so the removal can be synced to the desktop
+            using var deleteCmd = new SqliteCommand("UPDATE wishlist SET Deleted = 1, Modified = @Modified WHERE Artist = @Artist AND Title = @Title;", conn);
+            deleteCmd.Parameters.AddWithValue("@Modified", WishlistStore.UtcStamp());
+            deleteCmd.Parameters.AddWithValue("@Artist", item.Artist);
+            deleteCmd.Parameters.AddWithValue("@Title", item.Title);
             deleteCmd.ExecuteNonQuery();
             
             StatusMessage = "Wish List item deleted successfully.";
