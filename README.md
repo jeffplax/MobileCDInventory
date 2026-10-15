@@ -35,3 +35,7 @@ A high-performance .NET Avalonia application designed to catalog and browse a pe
 * Added an 'About' tab
 * Added a 'Wishlist' tab to identify CDs for future purchase
 * Removed the desktop, browser and iOS build versions from the project
+
+### v1.3.0 (October 15, 2026)
+* Cleaned up code 
+* Fixed some synching issues with wishlist
