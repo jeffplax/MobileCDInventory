@@ -1,0 +1,621 @@
+# =============================================================================
+# CD Inventory Ontology
+# Optimized for Classical and Popular Music Collections
+# OWL 2 DL Profile - Designed for efficient reasoning and querying
+# Pellet compatible - Ensures compatibility with the Pellet reasoner
+# Authors: [Jeff Plaxton]
+# Created: [2026-04-22]
+# =============================================================================
+
+@prefix : <http://example.org/cd-inventory#> .
+@prefix cd: <http://example.org/cd-inventory#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dc: <http://purl.org/dc/elements/1.1/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+# =============================================================================
+# Ontology Metadata
+# =============================================================================
+
+<http://example.org/cd-inventory> rdf:type owl:Ontology ;
+    dc:title "CD Inventory Ontology"@en ;
+    dc:creator "Jeff Plaxton" ;
+    dc:created "2026-04-22"^^xsd:date ;
+    dc:description "An ontology for managing a CD inventory, optimized for classical and popular music collections."@en ;
+    owl:versionInfo "1.0" .
+
+# =============================================================================
+# Classes - Core Hierarchy
+# =============================================================================
+
+# ---------------------------
+# Top-Level Classes
+# ---------------------------
+
+cd:Album rdf:type owl:Class ;
+    rdfs:label "Album"@en ;
+    rdfs:comment "A collection of tracks released together, typically on a CD."@en .
+
+cd:Track rdf:type owl:Class ;
+    rdfs:label "Track"@en ;
+    rdfs:comment "An individual piece of music within an album."@en .
+
+cd:Artist rdf:type owl:Class ;
+    rdfs:label "Artist"@en ;
+    rdfs:comment "An individual or group responsible for creating music."@en .
+
+cd:MusicalWork rdf:type owl:Class ;
+    rdfs:label "Musical Work"@en ;
+    rdfs:comment "A composition or piece of music, which may be performed by one or more artists."@en .
+
+cd:Label rdf:type owl:Class ;
+    rdfs:label "Record Label"@en ;
+    rdfs:comment "A company that produces and distributes music."@en .
+
+cd:Genre rdf:type owl:Class ;
+    rdfs:label "Genre"@en ;
+    rdfs:comment "A category of music characterized by a particular style or form."@en .
+
+cd:Format rdf:type owl:Class ;
+    rdfs:label "Format"@en ;
+    rdfs:comment "The physical or digital format of the album (e.g., CD, vinyl, digital)."@en .
+
+cd:Style rdf:type owl:Class ;
+    rdfs:label "Style"@en ;
+    rdfs:comment "A specific style or subgenre of music within a broader genre."@en .
+
+# ---------------------------
+# Artist Subclass
+# ---------------------------
+
+cd:Soloist rdf:type owl:Class ;
+    rdfs:subClassOf cd:Performer ;
+    rdfs:label "Soloist"@en ;
+    rdfs:comment "An individual artist who performs alone."@en .
+
+cd:Composer rdf:type owl:Class ;
+    rdfs:subClassOf cd:Artist ;
+    rdfs:label "Composer"@en ;
+    rdfs:comment "An artist who creates musical works, often for others to perform."@en .
+
+cd:Performer rdf:type owl:Class ;
+    rdfs:subClassOf cd:Artist ;
+    rdfs:label "Performer"@en ;
+    rdfs:comment "An artist who performs musical works, which may be composed by themselves or others."@en .
+
+cd:Conductor rdf:type owl:Class ;
+    rdfs:subClassOf cd:Performer ;
+    rdfs:label "Conductor"@en ;
+    rdfs:comment "An artist who directs the performance of an orchestra or ensemble."@en .
+
+cd:Ensemble rdf:type owl:Class ;
+    rdfs:subClassOf cd:Performer ;
+    rdfs:label "Musical Ensemble"@en ;
+    rdfs:comment "A group of artists who perform together, such as a band or orchestra."@en .
+
+cd:Orchestra rdf:type owl:Class ;
+    rdfs:subClassOf cd:Ensemble ;
+    rdfs:label "Orchestra"@en ;
+    rdfs:comment "A large ensemble of musicians, typically including strings, woodwinds, brass, and percussion."@en .
+
+cd:Quartet rdf:type owl:Class ;
+    rdfs:subClassOf cd:Ensemble ;
+    rdfs:label "Quartet"@en ;
+    rdfs:comment "A small ensemble of four musicians, often performing classical music."@en .
+
+cd:Band rdf:type owl:Class ;
+    rdfs:subClassOf cd:Ensemble ;
+    rdfs:label "Band"@en ;
+    rdfs:comment "A group of musicians who perform together, typically in popular music genres."@en .
+
+# ---------------------------
+# Musical Work Subclasses
+# ---------------------------
+
+cd:MultiMovementWork rdf:type owl:Class ;
+    rdfs:subClassOf cd:MusicalWork ;
+    rdfs:label "Multi-Movement Work"@en ;
+    rdfs:comment "A musical work consisting of multiple movements or sections, often found in classical music."@en .
+
+cd:Movement rdf:type owl:Class ;
+    rdfs:subClassOf cd:MusicalWork ;
+    rdfs:label "Movement"@en ;
+    rdfs:comment "A distinct section or part of a larger musical work, often found in classical compositions."@en .
+
+cd:Song rdf:type owl:Class ;
+    rdfs:subClassOf cd:MusicalWork ;
+    rdfs:label "Song"@en ;
+    rdfs:comment "A standalone musical composition."@en .
+
+cd:Symphony rdf:type owl:Class ;
+    rdfs:subClassOf cd:MultiMovementWork ;
+    rdfs:label "Symphony"@en ;
+    rdfs:comment "A large-scale musical composition typically for orchestra, consisting of multiple movements."@en .
+
+cd:Concerto rdf:type owl:Class ;
+    rdfs:subClassOf cd:MultiMovementWork ;
+    rdfs:label "Concerto"@en ;
+    rdfs:comment "A musical composition typically for a solo instrument accompanied by an orchestra, consisting of multiple movements."@en .
+
+cd:Sonata rdf:type owl:Class ;
+    rdfs:subClassOf cd:MultiMovementWork ;
+    rdfs:label "Sonata"@en ;
+    rdfs:comment "A musical composition typically for a solo instrument or a small ensemble, consisting of multiple movements."@en .
+
+cd:Suite rdf:type owl:Class ;
+    rdfs:subClassOf cd:MultiMovementWork ;
+    rdfs:label "Suite"@en ;
+    rdfs:comment "A musical composition consisting of a series of movements or pieces, often based on a common theme."@en .
+
+cd:Opera rdf:type owl:Class ;
+    rdfs:subClassOf cd:MultiMovementWork ;
+    rdfs:label "Opera"@en ;
+    rdfs:comment "A theatrical work combining music, singing, and sometimes dance, typically consisting of multiple movements or scenes."@en .
+
+# ---------------------------
+# Album Subclasses
+# ---------------------------
+
+cd:ClassicalAlbum rdf:type owl:Class ;
+    rdfs:subClassOf cd:Album ;
+    rdfs:label "Classical Album"@en ;
+    rdfs:comment "An album primarily featuring classical music compositions."@en .
+
+cd:PopularMusicAlbum rdf:type owl:Class ;
+    rdfs:subClassOf cd:Album ;
+    rdfs:label "Popular Music Album"@en ;
+    rdfs:comment "An album primarily featuring popular music genres such as rock, pop, jazz, etc."@en .
+
+cd:CompilationAlbum rdf:type owl:Class ;
+    rdfs:subClassOf cd:Album ;
+    rdfs:label "Compilation Album"@en ;
+    rdfs:comment "An album that is a collection of tracks, often from various artists or sources."@en .
+
+cd:LiveAlbum rdf:type owl:Class ;
+    rdfs:subClassOf cd:Album ;
+    rdfs:label "Live Album"@en ;
+    rdfs:comment "An album recorded during a live performance, capturing the energy and atmosphere of the event."@en .
+
+cd:SoundtrackAlbum rdf:type owl:Class ;
+    rdfs:subClassOf cd:Album ;
+    rdfs:label "Soundtrack Album"@en ;
+    rdfs:comment "An album featuring music from a film, television show, or video game."@en .
+
+# ---------------------------
+# Musical Period/Era Classes
+# ---------------------------
+
+cd:MusicalEra rdf:type owl:Class ;
+    rdfs:label "Musical Era"@en ;
+    rdfs:comment "A historical period characterized by specific musical styles and conventions."@en .
+
+cd:BaroqueEra rdf:type cd:MusicalEra;
+    rdfs:label "Baroque Era"@en ;
+    rdfs:comment "The Baroque era (1600-1750) is characterized by ornate musical styles and the development of tonality."@en ;
+    cd:periodStart "1600"^^xsd:gYear ;
+    cd:periodEnd "1750"^^xsd:gYear .
+
+cd:ClassicalEra rdf:type cd:MusicalEra;
+    rdfs:label "Classical Era"@en ;
+    rdfs:comment "The Classical era (1750-1820) is characterized by clarity, balance, and formality in musical composition."@en ;
+    cd:periodStart "1750"^^xsd:gYear ;
+    cd:periodEnd "1820"^^xsd:gYear .
+
+cd:RomanticEra rdf:type cd:MusicalEra;
+    rdfs:label "Romantic Era"@en ;
+    rdfs:comment "The Romantic era (1820-1910) is characterized by expressive emotion, individualism, and expanded harmonic language."@en ;
+    cd:periodStart "1820"^^xsd:gYear ;
+    cd:periodEnd "1910"^^xsd:gYear .
+
+cd:ModernEra rdf:type cd:MusicalEra;
+    rdfs:label "Modern Era"@en ;
+    rdfs:comment "The Modern era (1910-1975) is characterized by breaking traditional forms and tonality in composition."@en ;
+    cd:periodStart "1910"^^xsd:gYear ;
+    cd:periodEnd "1975"^^xsd:gYear .
+
+cd:ContemporaryEra rdf:type cd:MusicalEra;
+    rdfs:label "Contemporary Era"@en ;
+    rdfs:comment "The Contemporary era (1975-present) is characterized by diverse styles and ongoing experimentation in musical composition."@en ;
+    cd:periodStart "1975"^^xsd:gYear .
+
+# ---------------------------
+# Defined Classes
+# ---------------------------
+
+# An album with complete multi-movement work
+cd:CompleteWorkAlbum rdf:type owl:Class ;
+    rdfs:label "Complete Work Album"@en ;
+    rdfs:comment "An album that contains a complete multi-movement work, such as a symphony or concerto."@en ;
+    owl:equivalentClass [
+        rdf:type owl:Class ;
+        owl:intersectionOf (
+            cd:Album
+            [ rdf:type owl:Restriction ;
+                owl:onProperty cd:hasTrack ;
+                owl:someValuesFrom [
+                    rdf:type owl:Restriction ;
+                    owl:onProperty cd:partOfWork ;
+                    owl:someValuesFrom cd:MultiMovementWork
+                ]            
+            ]
+        )
+    ] .
+
+# A cover version track
+cd:CoverVersion rdf:type owl:Class ;
+    rdfs:label "Cover Version"@en ;
+    rdfs:comment "A track that is a cover version of an original song, performed by a different artist."@en ;
+    rdfs:subClassOf cd:Track .
+
+# Self-composed track (artist is also the composer)
+cd:SelfComposedTrack rdf:type owl:Class ;
+    rdfs:label "Self-Composed Track"@en ;
+    rdfs:comment "A track where the performing artist is also the composer of the music."@en ;
+    rdfs:subClassOf cd:Track .
+
+# =============================================================================
+# Object Properties
+# =============================================================================
+
+# ----------------------------
+# Album Relationships
+# ----------------------------
+
+cd:hasArtist rdf:type owl:ObjectProperty ;
+    rdfs:label "has artist"@en ;
+    rdfs:comment "Relates an album to the artist(s) responsible for it."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Artist .
+
+cd:hasComposer rdf:type owl:ObjectProperty ;
+    rdfs:label "has composer"@en ;
+    rdfs:comment "Relates an album to the composer(s) of the musical works it contains."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Composer ;
+    rdfs:subPropertyOf cd:hasArtist .
+
+cd:hasPerformer rdf:type owl:ObjectProperty ;
+    rdfs:label "has performer"@en ;
+    rdfs:comment "Relates an album to the performer(s) of the musical works it contains."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Performer ;
+    rdfs:subPropertyOf cd:hasArtist .
+
+cd:hasConductor rdf:type owl:ObjectProperty ;
+    rdfs:label "has conductor"@en ;
+    rdfs:comment "Relates an album to the conductor(s) of the musical works it contains."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Conductor ;
+    rdfs:subPropertyOf cd:hasPerformer .
+
+cd:hasEnsemble rdf:type owl:ObjectProperty ;
+    rdfs:label "has ensemble"@en ;
+    rdfs:comment "Relates an album to the ensemble(s) of the musical works it contains."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Ensemble ;
+    rdfs:subPropertyOf cd:hasPerformer .
+
+cd:hasLabel rdf:type owl:ObjectProperty ;
+    rdfs:label "has label"@en ;
+    rdfs:comment "Relates an album to the record label that produced it."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Label .
+
+cd:hasGenre rdf:type owl:ObjectProperty ;
+    rdfs:label "has genre"@en ;
+    rdfs:comment "Relates an album to its musical genre(s)."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Genre .
+
+cd:hasStyle rdf:type owl:ObjectProperty ;
+    rdfs:label "has style"@en ;
+    rdfs:comment "Relates an album to its musical style(s)."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Style .
+
+cd:hasFormat rdf:type owl:ObjectProperty ;
+    rdfs:label "has format"@en ;
+    rdfs:comment "Relates an album to its format(s), such as CD, vinyl, or digital."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Format .
+
+cd:hasTrack rdf:type owl:ObjectProperty ;
+    rdfs:label "has track"@en ;
+    rdfs:comment "Relates an album to its track(s)."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:Track .
+
+# ----------------------------
+# Track Relationships
+# ----------------------------
+
+cd:isTrackOn rdf:type owl:ObjectProperty ;
+    rdfs:label "is track on"@en ;
+    rdfs:comment "Relates a track to the album it is part of."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range cd:Album ;
+    owl:inverseOf cd:hasTrack .
+
+cd:partOfWork rdf:type owl:ObjectProperty ;
+    rdfs:label "part of work"@en ;
+    rdfs:comment "Relates a track to the larger work it is part of."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range cd:MusicalWork .
+
+cd:performedBy rdf:type owl:ObjectProperty ;
+    rdfs:label "performed by"@en ;
+    rdfs:comment "Relates a track to the performer(s) of the musical work."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range cd:Performer .
+
+cd:conductedBy rdf:type owl:ObjectProperty ;
+    rdfs:label "conducted by"@en ;
+    rdfs:comment "Relates a track to the conductor(s) of the musical work."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range cd:Conductor ;
+    rdfs:subPropertyOf cd:performedBy .
+
+cd:followsTrack rdf:type owl:ObjectProperty ;
+    rdfs:label "follows track"@en ;
+    rdfs:comment "Indicates a sequential ordering of tracks on the same album."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range cd:Track ;
+    rdf:type owl:TransitiveProperty ,
+             owl:IrreflexiveProperty ,
+             owl:AsymmetricProperty .
+
+# ----------------------------
+# Musical Work Relationships
+# ----------------------------
+
+cd:composedBy rdf:type owl:ObjectProperty ;
+    rdfs:label "composed by"@en ;
+    rdfs:comment "Relates a musical work to its composer(s)."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range cd:Composer .
+
+cd:arrangedBy rdf:type owl:ObjectProperty ;
+    rdfs:label "arranged by"@en ;
+    rdfs:comment "Relates a musical work to its arranger(s)."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range cd:Artist .
+
+cd:hasMovement rdf:type owl:ObjectProperty ;
+    rdfs:label "has movement"@en ;
+    rdfs:comment "Relates a musical work to its movement(s)."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range cd:Movement .
+
+cd:movementOf rdf:type owl:ObjectProperty ;
+    rdfs:label "movement of"@en ;
+    rdfs:comment "Relates a movement to the larger musical work it is part of."@en ;
+    rdfs:domain cd:Movement ;
+    rdfs:range cd:MultiMovementWork ;
+    owl:inverseOf cd:hasMovement .
+
+cd:musicalForm rdf:type owl:ObjectProperty ;
+    rdfs:label "musical form"@en ;
+    rdfs:comment "Relates a musical work to its musical form, such as sonata, rondo, etc."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range cd:Style .
+
+# ----------------------------
+# Artist Relationships
+# ----------------------------
+
+cd:hasSortForm rdf:type owl:DatatypeProperty ;
+    rdfs:label "has sort form"@en ;
+    rdfs:comment "Relates an artist to their name in a sortable format (e.g., 'Beethoven, Ludwig van')."@en ;
+    rdfs:domain cd:Artist ;
+    rdfs:range xsd:string .
+
+cd:activeInEra rdf:type owl:ObjectProperty ;
+    rdfs:label "active in era"@en ;
+    rdfs:comment "Relates an artist to the musical era(s) during which they were active."@en ;
+    rdfs:domain cd:Artist ;
+    rdfs:range cd:MusicalEra .
+
+cd:influenced rdf:type owl:ObjectProperty ,
+                       owl:TransitiveProperty ;
+    rdfs:label "influenced"@en ;
+    rdfs:comment "One artist influenced another artist directly or indirectly (transitive)."@en ;
+    rdfs:domain cd:Artist ;
+    rdfs:range cd:Artist .
+
+cd:collaboratedWith rdf:type owl:ObjectProperty ,
+                       owl:SymmetricProperty ;
+    rdfs:label "collaborated with"@en ;
+    rdfs:comment "Indicates that two artists have collaborated on a musical work or album."@en ;
+    rdfs:domain cd:Artist ;
+    rdfs:range cd:Artist .
+
+# ----------------------------
+# Temporal Relationships
+# ----------------------------
+
+cd:composedIn rdf:type owl:ObjectProperty ;
+    rdfs:label "composed in"@en ;
+    rdfs:comment "Relates a musical work to the musical era during which it was composed."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range cd:MusicalEra .
+
+cd:recordedIn rdf:type owl:ObjectProperty ;
+    rdfs:label "recorded in"@en ;
+    rdfs:comment "Relates an album to the musical era during which it was recorded."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range cd:MusicalEra .
+
+cd:releasedIn rdf:type owl:ObjectProperty ;
+    rdfs:label "released in"@en ;
+    rdfs:comment "Relates an album to the musical era during which it was released."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range cd:MusicalEra .
+
+# =============================================================================
+# Data Properties
+# =============================================================================
+
+# -----------------------------
+# General Data Properties
+# -----------------------------
+cd:periodStart rdf:type owl:DatatypeProperty ;
+    rdfs:label "period start"@en ;
+    rdfs:comment "Relates a musical era to its starting year."@en ;
+    rdfs:domain cd:MusicalEra ;
+    rdfs:range xsd:gYear .
+
+cd:periodEnd rdf:type owl:DatatypeProperty ;
+    rdfs:label "period end"@en ;
+    rdfs:comment "Relates a musical era to its ending year."@en ;
+    rdfs:domain cd:MusicalEra ;
+    rdfs:range xsd:gYear .
+
+
+# ----------------------------
+# Album Data Properties
+# ----------------------------
+
+cd:upc rdf:type owl:DatatypeProperty ,
+                owl:FunctionalProperty ;
+    rdfs:label "UPC"@en ;
+    rdfs:comment "The Universal Product Code (UPC) for the album."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range xsd:string .
+
+cd:albumTitle rdf:type owl:DatatypeProperty ;
+    rdfs:label "album title"@en ;
+    rdfs:comment "Relates an album, track, or musical work to its title."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range xsd:string .
+
+cd:releaseYear rdf:type owl:DatatypeProperty ;
+    rdfs:label "release year"@en ;
+    rdfs:comment "Relates an album to the year it was released."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range xsd:gYear .
+
+cd:albumCatalogNumber rdf:type owl:DatatypeProperty ;
+    rdfs:label "album catalog number"@en ;
+    rdfs:comment "Relates an album to its catalog number assigned by the record label."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range xsd:string .
+
+cd:barcode rdf:type owl:DatatypeProperty ;
+    rdfs:label "barcode"@en ;
+    rdfs:comment "Relates an album to its barcode number."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range xsd:string .
+
+cd:mediaCount rdf:type owl:DatatypeProperty ;
+    rdfs:label "media count"@en ;
+    rdfs:comment "Relates an album to the number of media items (e.g., CDs) it contains."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range xsd:positiveInteger .
+
+cd:country rdf:type owl:DatatypeProperty ;
+    rdfs:label "country"@en ;
+    rdfs:comment "Relates an album to the country where it was released."@en ;
+    rdfs:domain cd:Album ;
+    rdfs:range xsd:string .
+
+# ----------------------------
+# Track Data Properties
+# ----------------------------
+
+cd:trackTitle rdf:type owl:DatatypeProperty ;
+    rdfs:label "track title"@en ;
+    rdfs:comment "Relates a track to its title."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range xsd:string .
+
+cd:position rdf:type owl:DatatypeProperty ;
+    rdfs:label "position"@en ;
+    rdfs:comment "Relates a track to its position on the album (e.g., track number)."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range xsd:string .
+
+cd:duration rdf:type owl:DatatypeProperty ;
+    rdfs:label "duration"@en ;
+    rdfs:comment "Relates a track to its duration."@en ;
+    rdfs:domain cd:Track ;
+    rdfs:range xsd:string .
+
+cd:movementNumber rdf:type owl:DatatypeProperty ;
+    rdfs:label "movement number"@en ;
+    rdfs:comment "Relates a movement to its number within a multi-movement work."@en ;
+    rdfs:domain cd:Movement ;
+    rdfs:range xsd:positiveInteger .
+
+cd:movementTempo rdf:type owl:DatatypeProperty ;
+    rdfs:label "movement tempo"@en ;
+    rdfs:comment "Relates a movement to its tempo marking (e.g., Allegro, Adagio)."@en ;
+    rdfs:domain cd:Movement ;
+    rdfs:range xsd:string .
+
+# ----------------------------
+# Musical Work Data Properties
+# ----------------------------
+
+cd:workTitle rdf:type owl:DatatypeProperty ;
+    rdfs:label "work title"@en ;
+    rdfs:comment "Relates a musical work to its title."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range xsd:string .
+
+cd:opusNumber rdf:type owl:DatatypeProperty ;
+    rdfs:label "opus number"@en ;
+    rdfs:comment "Relates a musical work to its opus number (e.g., Op. 1, Op. 5)."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range xsd:string .
+
+cd:workCatalogNumber rdf:type owl:DatatypeProperty ;
+    rdfs:label "work catalog number"@en ;
+    rdfs:comment "Relates a musical work to its catalog number assigned by a musicologist (e.g., K. 525 for Mozart's Symphony No. 40)."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range xsd:string .
+
+cd:key rdf:type owl:DatatypeProperty ;
+    rdfs:label "key"@en ;
+    rdfs:comment "Relates a musical work to its key (e.g., C major, A minor)."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range xsd:string .
+
+cd:compositionYear rdf:type owl:DatatypeProperty ;
+    rdfs:label "composition year"@en ;
+    rdfs:comment "Relates a musical work to the year it was composed."@en ;
+    rdfs:domain cd:MusicalWork ;
+    rdfs:range xsd:gYear .
+
+cd:movementCount rdf:type owl:DatatypeProperty ;
+    rdfs:label "movement count"@en ;
+    rdfs:comment "Relates a multi-movement work to the number of movements it contains."@en ;
+    rdfs:domain cd:MultiMovementWork ;
+    rdfs:range xsd:positiveInteger .
+
+# ----------------------------
+# Artist Data Properties
+# ----------------------------
+
+cd:artistName rdf:type owl:DatatypeProperty ;
+    rdfs:label "artist name"@en ;
+    rdfs:comment "Relates an artist to their name."@en ;
+    rdfs:domain cd:Artist ;
+    rdfs:range xsd:string .
+
+cd:birthYear rdf:type owl:DatatypeProperty ;
+    rdfs:label "birth year"@en ;
+    rdfs:comment "Relates an artist to their year of birth."@en ;
+    rdfs:domain cd:Artist ;
+    rdfs:range xsd:gYear .
+
+cd:deathYear rdf:type owl:DatatypeProperty ;
+    rdfs:label "death year"@en ;
+    rdfs:comment "Relates an artist to their year of death."@en ;
+    rdfs:domain cd:Artist ;
+    rdfs:range xsd:gYear .
+
+
