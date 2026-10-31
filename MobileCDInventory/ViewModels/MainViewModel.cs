@@ -49,9 +49,24 @@ public partial class MainViewModel : ViewModelBase
 
     private string _connectionString = string.Empty;
 
+    // The phone's own copy of inventory.db. "Sync DB" copies the OneDrive file here.
+    public static string LocalInventoryPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "inventory.db");
+
     public MainViewModel()
     {
         LoadWishlistFromDB();
+
+        // Open the copy saved by the last sync, so the library is there at launch even with no signal in a store
+        if (File.Exists(LocalInventoryPath))
+        {
+            ConnectToDatabase(LocalInventoryPath);
+            if (Albums.Count > 0)
+            {
+                var synced = File.GetLastWriteTime(LocalInventoryPath);
+                StatusMessage = $"Showing {Albums.Count} Albums (synced {synced:MMM d, yyyy})";
+            }
+        }
     }
 
     public void ConnectToDatabase(string secureDbPath)

@@ -98,9 +98,8 @@ namespace MobileCDInventory.Views
                         // 1. Close connection so we can overwrite the file
                         vm.CloseConnection();
 
-                        // 2. Define the path
-                        var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        var dbPath = Path.Combine(vaultFolder, "inventory.db");   
+                        // 2. Define the path (the same copy the app opens at launch)
+                        var dbPath = MainViewModel.LocalInventoryPath;
                         
                         // 3. Copy the file
                         await using var sourceStream = await inventoryFile.OpenReadAsync();
