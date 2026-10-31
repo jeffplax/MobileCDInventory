@@ -1,0 +1,59 @@
+# Builds the Android app on GitHub's machines.
+#
+# Runs on every pull request and every push to main (and on demand from the Actions tab).
+# A pull request shows a green check or red X when it's done.
+# Each run produces a download: the APK, found at the bottom of the run's page under "Artifacts".
+#
+# Signing: this APK is signed with a temporary key created on GitHub's machine, so Android
+# won't install it as an update over a copy you built yourself (it reports a signature
+# conflict). Adding your own signing key as a repository secret will fix that later.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install the .NET Android workload
+        run: dotnet workload install android
+
+      # The project file points JavaSdkDirectory at a Windows path, so override it with this machine's Java
+      - name: Build the APK
+        run: >
+          dotnet publish MobileCDInventory.Android/MobileCDInventory.Android.csproj
+          --configuration Release
+          --output publish
+          -p:JavaSdkDirectory="$JAVA_HOME"
+          -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: MobileCDInventory-android
+          path: publish/*-Signed.apk
+          if-no-files-found: error
+          retention-days: 30
