@@ -13,12 +13,9 @@ namespace MobileCDInventory.Views
     {
         public MainView()
         {
+            // The DataContext (MainViewModel) is supplied by App.OnFrameworkInitializationCompleted.
+            // Creating one here as well made two view models at every launch, each loading the data.
             InitializeComponent();
-            // Manually ensure the DataContext is set if it isn't already
-            if (DataContext == null)
-            {
-                DataContext = new MainViewModel();
-            }            
 
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
             var version = assembly.GetName().Version;
@@ -98,9 +95,8 @@ namespace MobileCDInventory.Views
                         // 1. Close connection so we can overwrite the file
                         vm.CloseConnection();
 
-                        // 2. Define the path
-                        var vaultFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                        var dbPath = Path.Combine(vaultFolder, "inventory.db");   
+                        // 2. Define the path (the same copy the app opens at launch)
+                        var dbPath = MainViewModel.LocalInventoryPath;
                         
                         // 3. Copy the file
                         await using var sourceStream = await inventoryFile.OpenReadAsync();
