@@ -186,8 +186,10 @@ public partial class MainViewModel : ViewModelBase
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
-            // Query to get tracks for the selected album by UPC
-            string sql = "SELECT Position, Track_Title, Duration FROM tracks WHERE UPC = @upc ORDER BY length(Position) ASC,Position ASC";
+            // Query to get tracks for the selected album by UPC, in the order Discogs listed them (TrackID is
+            // assigned as they're inserted). Sorting the Position text breaks on multi-disc sets: by length,
+            // "2-1" comes before "1-10", so disc 2 started in the middle of disc 1.
+            string sql = "SELECT Position, Track_Title, Duration FROM tracks WHERE UPC = @upc ORDER BY TrackID ASC";
 
             using var command = new SqliteCommand(sql, connection);
             command.Parameters.AddWithValue("@upc", upc);
