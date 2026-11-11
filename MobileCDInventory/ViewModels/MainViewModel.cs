@@ -49,9 +49,24 @@ public partial class MainViewModel : ViewModelBase
 
     private string _connectionString = string.Empty;
 
+    // The phone's own copy of inventory.db. "Sync DB" copies the OneDrive file here.
+    public static string LocalInventoryPath =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "inventory.db");
+
     public MainViewModel()
     {
         LoadWishlistFromDB();
+
+        // Open the copy saved by the last sync, so the library is there at launch even with no signal in a store
+        if (File.Exists(LocalInventoryPath))
+        {
+            ConnectToDatabase(LocalInventoryPath);
+            if (Albums.Count > 0)
+            {
+                var synced = File.GetLastWriteTime(LocalInventoryPath);
+                StatusMessage = $"Showing {Albums.Count} Albums (synced {synced:MMM d, yyyy})";
+            }
+        }
     }
 
     public void ConnectToDatabase(string secureDbPath)
@@ -171,8 +186,10 @@ public partial class MainViewModel : ViewModelBase
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
 
-            // Query to get tracks for the selected album by UPC
-            string sql = "SELECT Position, Track_Title, Duration FROM tracks WHERE UPC = @upc ORDER BY length(Position) ASC,Position ASC";
+            // Query to get tracks for the selected album by UPC, in the order Discogs listed them (TrackID is
+            // assigned as they're inserted). Sorting the Position text breaks on multi-disc sets: by length,
+            // "2-1" comes before "1-10", so disc 2 started in the middle of disc 1.
+            string sql = "SELECT Position, Track_Title, Duration FROM tracks WHERE UPC = @upc ORDER BY TrackID ASC";
 
             using var command = new SqliteCommand(sql, connection);
             command.Parameters.AddWithValue("@upc", upc);
