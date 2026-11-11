@@ -20,11 +20,8 @@
     <NoWarn>$(NoWarn);XA0141</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup>
-    <AndroidResource Include="Icon.png">
-      <Link>Resources\drawable\Icon.png</Link>
-    </AndroidResource>
-  </ItemGroup>
+  <!-- App icon: Resources\mipmap-* (launcher) and Resources\drawable-*\splash_logo.png (splash screen)
+       are rendered from the SVGs in IconSource\, which match the desktop app's icon. -->
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" />
