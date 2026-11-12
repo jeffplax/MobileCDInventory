@@ -2,17 +2,22 @@
 #
 # Runs on every pull request and every push to main (and on demand from the Actions tab).
 # A pull request shows a green check or red X when it's done.
-# Each run produces a download: the APK, found at the bottom of the run's page under "Artifacts".
+# Each run produces a download, the APK, at the bottom of the run's page under "Artifacts".
 #
-# Signing: this APK is signed with a temporary key created on GitHub's machine, so Android
-# won't install it as an update over a copy you built yourself (it reports a signature
-# conflict). Adding your own signing key as a repository secret will fix that later.
+# Signing: the APK is signed with the release key stored in the repository secrets
+# (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD),
+# so it installs as an update over the released app. The run's summary says which key was used.
+#
+# Releasing a version: set <Version> in Directory.Build.props (e.g. 1.6.0), merge it to main,
+# then push a matching tag (v1.6.0). GitHub then publishes a Release with the APK attached;
+# open the repo's Releases page on the phone and tap the APK to install the update.
 
 name: Build
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -41,8 +46,38 @@ jobs:
       - name: Install the .NET Android workload
         run: dotnet workload install android
 
-      # The project file points JavaSdkDirectory at a Windows path, so override it with this machine's Java
+      - name: Read the version number
+        id: version
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match <Version>$version</Version> in Directory.Build.props"
+            exit 1
+          fi
+          echo "number=$version" >> "$GITHUB_OUTPUT"
+          echo "Version $version"
+
+      # The keystore secret is the key file as base64 text; turn it back into a file for the build
+      - name: Set up the release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+              echo "::error::Releases must be signed with the release key, but the ANDROID_KEYSTORE_BASE64 secret isn't available"
+              exit 1
+            fi
+            echo "::warning::No release key available (pull requests from forks can't see secrets); this APK will be signed with a temporary debug key"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/cdinventory.keystore"
+          echo "CDINV_KEYSTORE=$RUNNER_TEMP/cdinventory.keystore" >> "$GITHUB_ENV"
+
       - name: Build the APK
+        env:
+          CDINV_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          CDINV_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          CDINV_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: >
           dotnet publish MobileCDInventory.Android/MobileCDInventory.Android.csproj
           --configuration Release
@@ -50,10 +85,70 @@ jobs:
           -p:JavaSdkDirectory="$JAVA_HOME"
           -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT"
 
+      # Name the APK by version and confirm which key signed it
+      - name: Check the APK's signature
+        run: |
+          mkdir -p out
+          apk="out/CDInventory-${{ steps.version.outputs.number }}.apk"
+          cp publish/*-Signed.apk "$apk"
+
+          apksigner=$(ls -d "$ANDROID_SDK_ROOT"/build-tools/*/apksigner | sort -V | tail -1)
+          certs=$("$apksigner" verify --print-certs "$apk")
+          echo "$certs"
+          # apksigner labels these "Signer #1 certificate ..." or "V3.0 Signer: certificate ..." by version
+          dn=$(echo "$certs" | grep -m1 'certificate DN: ' | sed 's/.*certificate DN: //')
+          sha=$(echo "$certs" | grep -m1 'certificate SHA-256 digest: ' | sed 's/.*certificate SHA-256 digest: //')
+          if [ -z "$dn" ]; then
+            echo "::error::Couldn't read the APK's signing certificate"
+            exit 1
+          fi
+
+          if [ -n "${CDINV_KEYSTORE:-}" ]; then
+            if [[ "$dn" == *"Android Debug"* ]]; then
+              echo "::error::A release key was supplied but the APK was signed with the debug key"
+              exit 1
+            fi
+            key="release key"
+          else
+            key="temporary debug key (won't install over the released app)"
+          fi
+
+          {
+            echo "### APK"
+            echo "- **File:** \`$(basename "$apk")\`"
+            echo "- **Package:** \`com.jeffplax.cdinventory\`, version ${{ steps.version.outputs.number }}"
+            echo "- **Signed with:** $key"
+            echo "- **Certificate:** $dn"
+            echo "- **SHA-256:** \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload the APK
         uses: actions/upload-artifact@v7
         with:
-          name: MobileCDInventory-android
-          path: publish/*-Signed.apk
+          name: CDInventory-android
+          path: out/*.apk
           if-no-files-found: error
           retention-days: 30
+
+  # Only for version tags: publish a GitHub Release with the APK attached
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download the APK
+        uses: actions/download-artifact@v8
+        with:
+          name: CDInventory-android
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" *.apk
+          --repo "$GITHUB_REPOSITORY"
+          --title "CD Inventory (Android) ${GITHUB_REF_NAME#v}"
+          --generate-notes

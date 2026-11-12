@@ -17,7 +17,9 @@
     <PackageVersion Include="Avalonia.Android" Version="11.3.12" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.5" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />
+    <!-- Newer SQLite engine than Microsoft.Data.Sqlite brings by default: 2.1.11 and earlier bundle a SQLite
+         with a known vulnerability (GHSA-2m69-gcr7-jv3q). Stay on the 2.x line, which Microsoft.Data.Sqlite 10 uses. -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
     <PackageVersion Include="System.Data.SQLite" Version="2.0.2" />
     <PackageVersion Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
     <PackageVersion Include="SkiaSharp" Version="2.88.9" />
