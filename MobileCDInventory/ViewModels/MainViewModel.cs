@@ -100,10 +100,12 @@ public partial class MainViewModel : ViewModelBase
             // Base query
             string sql = "SELECT * FROM albums WHERE 1=1"; // Base query to allow for easy filtering
 
-            // Add genre filter if a specific genre is selected
+            // Add genre filter if a specific genre is selected. An album's Genre holds all its Discogs genres
+            // joined by ", " (e.g. "Classical, Stage & Screen"), so match the genre anywhere in that list.
+            // Wrapping both sides in ", " keeps "Pop" from matching inside another genre's name.
             if (!string.IsNullOrEmpty(SelectedGenre) && SelectedGenre != "All Genres")
             {
-                sql += " AND Genre = @genre";
+                sql += " AND (', ' || Genre || ', ') LIKE @genre";
             }
 
             if (!string.IsNullOrEmpty(SearchQuery))
@@ -127,7 +129,7 @@ public partial class MainViewModel : ViewModelBase
 
             if (!string.IsNullOrEmpty(SelectedGenre) && SelectedGenre != "All Genres")
             {
-                command.Parameters.AddWithValue("@genre", SelectedGenre);
+                command.Parameters.AddWithValue("@genre", $"%, {SelectedGenre}, %");
             }
 
             using (var reader = command.ExecuteReader())
@@ -211,6 +213,28 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    // Discogs genres that contain ", " in their own name, so they mustn't be split apart
+    private static readonly string[] GenresWithCommas = { "Folk, World, & Country" };
+
+    // Splits a stored Genre value ("Classical, Stage & Screen") into its individual genres
+    private static System.Collections.Generic.IEnumerable<string> SplitGenres(string genres)
+    {
+        foreach (var name in GenresWithCommas)
+        {
+            if (genres.Contains(name, StringComparison.OrdinalIgnoreCase))
+            {
+                yield return name;
+                genres = genres.Replace(name, "", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        foreach (var part in genres.Split(','))
+        {
+            var genre = part.Trim();
+            if (genre.Length > 0) yield return genre;
+        }
+    }
+
     private void LoadGenres()
     {
         // Check if we have a connection string yet
@@ -218,24 +242,30 @@ public partial class MainViewModel : ViewModelBase
 
         try
         {
-            // Start with the default "All" option
-            var genreList = new System.Collections.Generic.List<string> { "All Genres" };
+            // Each album's Genre can hold several genres ("Classical, Stage & Screen"), so split them up
+            // and list each genre once, rather than every combination that happens to occur
+            var individualGenres = new System.Collections.Generic.SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Use Microsoft.Data.Sqlite classes
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
 
-                string sql = "SELECT DISTINCT Genre FROM albums WHERE Genre IS NOT NULL AND Genre != '' ORDER BY Genre ASC";
-                
+                string sql = "SELECT DISTINCT Genre FROM albums WHERE Genre IS NOT NULL AND Genre != ''";
+
                 using var cmd = new SqliteCommand(sql, conn);
                 using var reader = cmd.ExecuteReader();
 
                 while (reader.Read())
                 {
-                    genreList.Add(reader.GetString(0));
+                    foreach (var genre in SplitGenres(reader.GetString(0)))
+                        individualGenres.Add(genre);
                 }
             }
+
+            // Start with the default "All" option
+            var genreList = new System.Collections.Generic.List<string> { "All Genres" };
+            genreList.AddRange(individualGenres);
 
             // Clear and update the ObservableCollection
             // This automatically updates the UI ComboBox because of the binding
