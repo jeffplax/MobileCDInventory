@@ -454,7 +454,8 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# Ignore any instances of SQLite database files
+# Ignore any instances of SQLite database files or SQL scripts
+*.sql
 *.db
 
 # Ignore any temporary csv files
