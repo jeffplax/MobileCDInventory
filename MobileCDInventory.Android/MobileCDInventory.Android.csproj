@@ -3,21 +3,38 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-android</TargetFramework>
     <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
-    <JavaSdkDirectory>C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot</JavaSdkDirectory>
+    <!-- Jeff's Windows JDK. Only used when that folder exists, so builds on Linux and on GitHub
+         find Java on their own (JAVA_HOME). -->
+    <JavaSdkDirectory Condition="'$(JavaSdkDirectory)' == '' and Exists('C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot')">C:\Program Files\Microsoft\jdk-21.0.9.10-hotspot</JavaSdkDirectory>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <Nullable>enable</Nullable>
     
-    <ApplicationId>com.CompanyName.MobileCDInventory</ApplicationId>
-    <ApplicationVersion>5</ApplicationVersion>
-    <ApplicationDisplayVersion>1.4</ApplicationDisplayVersion>
+    <!-- Never change ApplicationId again: Android treats a different ID as a different app. -->
+    <ApplicationId>com.jeffplax.cdinventory</ApplicationId>
+    <!-- Both come from <Version> in Directory.Build.props. The version code must go up with every
+         release, so it's built as major*10000 + minor*100 + patch (1.5.0 -> 10500). -->
+    <ApplicationDisplayVersion>$(Version)</ApplicationDisplayVersion>
+    <ApplicationVersion>$([MSBuild]::Add($([MSBuild]::Add($([MSBuild]::Multiply($([System.Version]::Parse('$(Version)').Major), 10000)), $([MSBuild]::Multiply($([System.Version]::Parse('$(Version)').Minor), 100)))), $([System.Version]::Parse('$(Version)').Build)))</ApplicationVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
 
     <Deterministic>false</Deterministic>
-    <AssemblyVersion>1.3.0.0</AssemblyVersion>
 
     <!-- Suppress the Android 16KB page size warning (XA0141) until Avalonia fixes it -->
     <NoWarn>$(NoWarn);XA0141</NoWarn>
+  </PropertyGroup>
+
+  <!-- Release signing. When CDINV_KEYSTORE (an environment variable, or -p: on the command line) points
+       at the keystore, every build is signed with that key, so it installs as an update over the
+       released app. Passwords are read from the CDINV_KEYSTORE_PASSWORD and CDINV_KEY_PASSWORD
+       environment variables. Without CDINV_KEYSTORE, builds use the automatic debug key as before. -->
+  <PropertyGroup Condition="'$(CDINV_KEYSTORE)' != ''">
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>$(CDINV_KEYSTORE)</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias>$(CDINV_KEY_ALIAS)</AndroidSigningKeyAlias>
+    <AndroidSigningKeyAlias Condition="'$(AndroidSigningKeyAlias)' == ''">cdinventory</AndroidSigningKeyAlias>
+    <AndroidSigningStorePass>env:CDINV_KEYSTORE_PASSWORD</AndroidSigningStorePass>
+    <AndroidSigningKeyPass>env:CDINV_KEY_PASSWORD</AndroidSigningKeyPass>
   </PropertyGroup>
 
   <!-- App icon: Resources\mipmap-* (launcher) and Resources\drawable-*\splash_logo.png (splash screen)

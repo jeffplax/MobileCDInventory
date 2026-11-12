@@ -1,0 +1,8 @@
+<Project>
+  <!-- The app's version number, in one place for every project. The About tab shows it, the Android
+       build derives its version code from it, and a release tag must match it (e.g. v1.5.0).
+       Use plain major.minor.patch numbers. -->
+  <PropertyGroup>
+    <Version>1.5.0</Version>
+  </PropertyGroup>
+</Project>
